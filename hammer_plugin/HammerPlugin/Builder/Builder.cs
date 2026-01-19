@@ -27,44 +27,34 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Главный сценарий построения модели молотка.
         /// </summary>
-        /// <param name="parameters">параметры модели</param>
+        /// <param name="parameters">Параметры модели.</param>
         public void Build(Parameters parameters)
         {
-
-            _wrapper.RunCAD();
+            _wrapper.OpenKompas();
             _wrapper.CreateDocument3D();
 
-            double middle = parameters.GetParameter(ParameterType.LengthL) - (parameters.GetParameter(ParameterType.ClawLengthL)
-               + parameters.GetParameter(ParameterType.NeckWidthA) + (parameters.GetParameter(ParameterType.FaceWidthC) / 2));
-
-            BuildHammerHead(parameters, middle);
-            BuildHole(parameters, middle);
-            BuildHandle(parameters, middle);
-
-            try
-            {
-                var directory = GetModelsDirectory();
-                var filePath = Path.Combine(directory, CreateFileName());
-                SaveModel(filePath);
-            }
-            finally
-            {
-                _wrapper.CloseActiveDocument();
-            }
+            BuildHammerHead(parameters);
+            BuildHole(parameters);
+            BuildHandle(parameters);
         }
 
         /// <summary>
         /// Строит головку молотка.
         /// </summary>
-        /// <param name="parameters">параметры модели</param>
-        /// <param name="middle">длина средней части молотка</param>
-        private void BuildHammerHead(Parameters parameters, double middle)
+        /// <param name="parameters">Параметры модели.</param>
+        private void BuildHammerHead(Parameters parameters)
         {
             List<object> sections = new List<object>();
 
-            double size = parameters.GetParameter(ParameterType.ClawWidthW);
-            double middleDiameter = parameters.GetParameter(ParameterType.NeckDiameterB) / 1.4;
-            double neckExtr = parameters.GetParameter(ParameterType.NeckWidthA) + (parameters.GetParameter(ParameterType.FaceWidthC) / 2);
+            double size =
+                parameters.GetParam(ParameterType.ClawWidthW);
+
+            double middleDiameter = 
+                parameters.GetParam(ParameterType.NeckDiameterB) / 1.4;
+
+            double neckExtr = 
+                parameters.GetParam(ParameterType.NeckWidthA) 
+                + (parameters.GetParam(ParameterType.FaceWidthC) / 2);
 
             object sketch1 = _wrapper.CreateSketchOnPlane("YOZ");
             try
@@ -83,7 +73,8 @@ namespace HammerPlugin.Services
                 sections.Add(sketch1);
             }
 
-            object sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ", middle / 4, false);
+            object sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
+                parameters.GetParam(ParameterType.MiddleM) / 4, false);
             try
             {
                 _wrapper.DrawCircle(0, 0, middleDiameter / 2);
@@ -94,7 +85,8 @@ namespace HammerPlugin.Services
                 sections.Add(sketch2);
             }
 
-            object sketch3 = _wrapper.CreateSketchOnOffsetPlane("YOZ", middle / 2, false);
+            object sketch3 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
+                parameters.GetParam(ParameterType.MiddleM) / 2, false);
             try
             {
                 _wrapper.DrawCircle(0, 0, middleDiameter / 2);
@@ -105,10 +97,12 @@ namespace HammerPlugin.Services
                 sections.Add(sketch3);
             }
 
-            object sketch4 = _wrapper.CreateSketchOnOffsetPlane("YOZ", middle, false);
+            object sketch4 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
+                parameters.GetParam(ParameterType.MiddleM), false);
             try
             {
-                _wrapper.DrawCircle(0, 0, parameters.GetParameter(ParameterType.NeckDiameterB) / 2);
+                _wrapper.DrawCircle(0, 0, 
+                    parameters.GetParam(ParameterType.NeckDiameterB) / 2);
             }
             finally
             {
@@ -119,17 +113,21 @@ namespace HammerPlugin.Services
             _wrapper.Loft(sections);
             _wrapper.Extrude(sketch4, neckExtr, false);
 
-            object sketch5 = _wrapper.CreateSketchOnOffsetPlane("YOZ", middle + neckExtr, false);
+            object sketch5 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
+                parameters.GetParam(ParameterType.MiddleM) 
+                + neckExtr, false);
             try
             {
-                _wrapper.DrawCircle(0, 0, parameters.GetParameter(ParameterType.FaceDiameterD) / 2);
+                _wrapper.DrawCircle(0, 0, 
+                    parameters.GetParam(ParameterType.FaceDiameterD) / 2);
             }
             finally
             {
                 _wrapper.FinishSketch(sketch5);
             }
 
-            _wrapper.Extrude(sketch5, parameters.GetParameter(ParameterType.FaceWidthC), false, true);
+            _wrapper.Extrude(sketch5, 
+                parameters.GetParam(ParameterType.FaceWidthC), false, true);
             BuildClaw(parameters, size);
         }
 
@@ -137,8 +135,8 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Строит носок молотка.
         /// </summary>
-        /// <param name="parameters">параметры модели</param>
-        /// <param name="size">длина головки молотка</param>
+        /// <param name="parameters">Параметры модели.</param>
+        /// <param name="size">Длина головки молотка.</param>
         private void BuildClaw(Parameters parameters, double size)
         {
             List<object> sections = new List<object>();
@@ -159,13 +157,17 @@ namespace HammerPlugin.Services
                 sections.Add(sketch1);
             }
             sections.Add(sketch1);
-            object sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ", parameters.GetParameter(ParameterType.ClawLengthL), true);
+            object sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
+                parameters.GetParam(ParameterType.ClawLengthL), true);
             try
             {
-                double firstRectLeftX = parameters.GetParameter(ParameterType.ClawWidthW) / 2;
-                double firstRectBottomY = -parameters.GetParameter(ParameterType.ClawWidthW) / 2;
+                double firstRectLeftX = 
+                    parameters.GetParam(ParameterType.ClawWidthW) / 2;
+                double firstRectBottomY =
+                    -parameters.GetParam(ParameterType.ClawWidthW) / 2;
                 double height = 0.5;
-                double width = parameters.GetParameter(ParameterType.ClawWidthW);
+                double width =
+                    parameters.GetParam(ParameterType.ClawWidthW);
                 double leftX = firstRectLeftX;
                 double bottomY = firstRectBottomY;
                 double rightX = firstRectLeftX + height;
@@ -184,15 +186,16 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Создает отверстие согласно заданным параметрам.
         /// </summary>
-        /// <param name="parameters">параметры модели</param>
-        /// <param name="middle">длина средней части молотка</param>
-        private void BuildHole(Parameters parameters, double middle)
+        /// <param name="parameters">Параметры модели.</param>
+        private void BuildHole(Parameters parameters)
         {
             object ellipseSketch = _wrapper.CreateSketchOnPlane("XOY");
             try
             {
-                _wrapper.DrawEllipse(middle / 2, 0, parameters.GetParameter(ParameterType.HeadHoleY1) / 2,
-                    parameters.GetParameter(ParameterType.HeadHoleX1) / 2);
+                _wrapper.DrawEllipse(
+                    parameters.GetParam(ParameterType.MiddleM) / 2, 0, 
+                    parameters.GetParam(ParameterType.HeadHoleY1) / 2,
+                    parameters.GetParam(ParameterType.HeadHoleX1) / 2);
             }
             finally
             {
@@ -204,61 +207,29 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Строит рукоять молотка.
         /// </summary>
-        /// <param name="parameters">параметры модели</param>
-        /// <param name="middle">длина средней части молотка</param>
-        private void BuildHandle(Parameters parameters, double middle)
+        /// <param name="parameters">Параметры модели.</param>
+        private void BuildHandle(Parameters parameters)
         {
             object ellipseSketch = _wrapper.CreateSketchOnPlane("XOY");
             try
             {
-                _wrapper.DrawEllipse(middle / 2, 0, parameters.GetParameter(ParameterType.HandleWidthY2) / 2,
-                    parameters.GetParameter(ParameterType.HandleWidthX2) / 2);
+                _wrapper.DrawEllipse(
+                    parameters.GetParam(ParameterType.MiddleM) / 2, 0, 
+                    parameters.GetParam(ParameterType.HandleWidthY2) / 2,
+                    parameters.GetParam(ParameterType.HandleWidthX2) / 2);
             }
             finally
             {
                 _wrapper.FinishSketch(ellipseSketch);
             }
-            _wrapper.Extrude(ellipseSketch, parameters.GetParameter(ParameterType.FaceDiameterD) / 2, true);
-            _wrapper.Extrude(ellipseSketch, parameters.GetParameter(ParameterType.HeightH)
-                - (parameters.GetParameter(ParameterType.FaceDiameterD) / 2), false);
+            _wrapper.Extrude(ellipseSketch,
+                parameters.GetParam(ParameterType.FaceDiameterD) / 2, 
+                true);
+
+            _wrapper.Extrude(ellipseSketch, 
+                parameters.GetParam(ParameterType.HeightH) - 
+                (parameters.GetParam(ParameterType.FaceDiameterD) / 2),
+                false);
         }
-
-
-        /// <summary>
-        /// Сохраняет построенную модель в файл.
-        /// </summary>
-        /// <param name="path">путь к файлу</param>
-        public void SaveModel(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                throw new ArgumentException("Путь к файлу не задан.", nameof(path));
-            }
-
-            _wrapper.SaveAs(path);
-        }
-
-        /// <summary>
-        /// Формирует уникальное имя файла по параметрам и времени.
-        /// </summary>
-        private static string CreateFileName()
-        {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Hammer",
-                DateTime.Now);
-        }
-
-        /// <summary>
-        /// Возвращает путь к директории, в которую будет сохраняться 3D-документ.
-        /// </summary>
-        private static string GetModelsDirectory()
-        {
-            var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            var directory = Path.Combine(documents, "HammerPlugin", "Models");
-            Directory.CreateDirectory(directory);
-            return directory;
-        }
-
     }
 }

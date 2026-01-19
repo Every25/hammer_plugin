@@ -1,7 +1,4 @@
-﻿using System;
-
-
-namespace HammerPluginCore.Model
+﻿namespace HammerPluginCore.Model
 {
     /// <summary>
     /// Список параметров молотка.
@@ -17,6 +14,11 @@ namespace HammerPluginCore.Model
         /// Длина головки молотка (L).
         /// </summary>
         LengthL,
+
+        /// <summary>
+        /// Середина головки молотка (M).
+        /// </summary>
+        MiddleM,
 
         /// <summary>
         /// Диаметр бойка (D).

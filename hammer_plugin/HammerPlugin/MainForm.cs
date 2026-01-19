@@ -11,8 +11,8 @@ namespace HammerPlugin
     public partial class MainForm : Form
     {
         /// <summary>
-        /// Построитель 3D-модели, использующий API КОМПАС-3D для создания геометрической модели
-        /// на основе валидных параметров.
+        /// Построитель 3D-модели, использующий API КОМПАС-3D
+        /// для создания геометрической модели на основе валидных параметров.
         /// </summary>
         private Builder _builder;
 
@@ -45,6 +45,7 @@ namespace HammerPlugin
             {
                 { ParameterType.HeightH, textBoxH },
                 { ParameterType.LengthL, textBoxL },
+                 { ParameterType.MiddleM, textBoxM },
                 { ParameterType.FaceDiameterD, textBoxD },
                 { ParameterType.FaceWidthC, textBoxC },
                 { ParameterType.NeckWidthA, textBoxA },
@@ -64,25 +65,27 @@ namespace HammerPlugin
         /// </summary>
         private void InitializeDefaultValues()
         {
-            textBoxH.Text = _parameters.GetParameter(ParameterType.HeightH)
+            textBoxH.Text = _parameters.GetParam(ParameterType.HeightH)
                 .ToString(CultureInfo.InvariantCulture);
-            textBoxL.Text = _parameters.GetParameter(ParameterType.LengthL)
+            textBoxL.Text = _parameters.GetParam(ParameterType.LengthL)
                 .ToString(CultureInfo.InvariantCulture);
-            textBoxD.Text = _parameters.GetParameter(ParameterType.FaceDiameterD)
+            textBoxM.Text = _parameters.GetParam(ParameterType.MiddleM)
                 .ToString(CultureInfo.InvariantCulture);
-            textBoxC.Text = _parameters.GetParameter(ParameterType.FaceWidthC)
+            textBoxD.Text = _parameters.GetParam(ParameterType.FaceDiameterD)
                 .ToString(CultureInfo.InvariantCulture);
-            textBoxA.Text = _parameters.GetParameter(ParameterType.NeckWidthA)
+            textBoxC.Text = _parameters.GetParam(ParameterType.FaceWidthC)
                 .ToString(CultureInfo.InvariantCulture);
-            textBoxB.Text = _parameters.GetParameter(ParameterType.NeckDiameterB)
+            textBoxA.Text = _parameters.GetParam(ParameterType.NeckWidthA)
+                .ToString(CultureInfo.InvariantCulture);
+            textBoxB.Text = _parameters.GetParam(ParameterType.NeckDiameterB)
              .ToString(CultureInfo.InvariantCulture);
-            textBoxX1.Text = _parameters.GetParameter(ParameterType.HeadHoleX1)
+            textBoxX1.Text = _parameters.GetParam(ParameterType.HeadHoleX1)
                .ToString(CultureInfo.InvariantCulture);
-            textBoxY1.Text = _parameters.GetParameter(ParameterType.HeadHoleY1)
+            textBoxY1.Text = _parameters.GetParam(ParameterType.HeadHoleY1)
               .ToString(CultureInfo.InvariantCulture);
-            textBoxNL.Text = _parameters.GetParameter(ParameterType.ClawLengthL)
+            textBoxNL.Text = _parameters.GetParam(ParameterType.ClawLengthL)
               .ToString(CultureInfo.InvariantCulture);
-            textBoxW.Text = _parameters.GetParameter(ParameterType.ClawWidthW)
+            textBoxW.Text = _parameters.GetParam(ParameterType.ClawWidthW)
               .ToString(CultureInfo.InvariantCulture);
         }
 
@@ -92,28 +95,32 @@ namespace HammerPlugin
         private void AttachEventHandlers()
         {
             textBoxH.TextChanged += (s, e) =>
-                onDataChanged(ParameterType.HeightH, textBoxH);
+               OnDataChanged(ParameterType.HeightH, textBoxH);
+            textBoxM.TextChanged += (s, e) =>
+               OnDataChanged(ParameterType.MiddleM, textBoxM);
             textBoxD.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.FaceDiameterD, textBoxD);
+               OnDataChanged(ParameterType.FaceDiameterD, textBoxD);
             textBoxC.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.FaceWidthC, textBoxC);
+               OnDataChanged(ParameterType.FaceWidthC, textBoxC);
             textBoxA.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.NeckWidthA, textBoxA);
+               OnDataChanged(ParameterType.NeckWidthA, textBoxA);
             textBoxB.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.NeckDiameterB, textBoxB);
+               OnDataChanged(ParameterType.NeckDiameterB, textBoxB);
             textBoxX1.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.HeadHoleX1, textBoxX1);
+               OnDataChanged(ParameterType.HeadHoleX1, textBoxX1);
             textBoxY1.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.HeadHoleY1, textBoxY1);
+               OnDataChanged(ParameterType.HeadHoleY1, textBoxY1);
             textBoxW.TextChanged += (s, e) =>
-               onDataChanged(ParameterType.ClawWidthW, textBoxW);
+               OnDataChanged(ParameterType.ClawWidthW, textBoxW);
             textBoxNL.TextChanged += (s, e) =>
-              onDataChanged(ParameterType.ClawLengthL, textBoxNL);
+               OnDataChanged(ParameterType.ClawLengthL, textBoxNL);
         }
 
         /// <summary>
         /// Обработчик кнопки "Построить".
         /// </summary>
+        /// <param name="sender">Источник события.</param>
+        /// <param name="e">Данные события.</param>
         private void buildButton_Click(object sender, EventArgs e)
         {
             BuildModel();
@@ -124,7 +131,7 @@ namespace HammerPlugin
         /// </summary>
         /// <param name="paramType">Тип параметра.</param>
         /// <param name="textBox">Текстовое поле.</param>
-        private void onDataChanged(ParameterType paramType, TextBox textBox)
+        private void OnDataChanged(ParameterType paramType, TextBox textBox)
         {
             _parameters.ClearErrors();
             richTextBox1.Clear();
@@ -187,7 +194,8 @@ namespace HammerPlugin
                     bool hasError = _parameters.ErrorCollector
                         .Any(e => e.ParameterType == paramType);
 
-                    textBox.BackColor = hasError ? Color.LightCoral : Color.White;
+                    textBox.BackColor = 
+                        hasError ? Color.LightCoral : Color.White;
                 }
             }
             else
@@ -241,7 +249,7 @@ namespace HammerPlugin
             try
             {
                 _parameters.UpdateCalculatedParameters();
-                textBoxL.Text = _parameters.GetParameter(ParameterType.LengthL)
+                textBoxL.Text = _parameters.GetParam(ParameterType.LengthL)
                     .ToString(CultureInfo.InvariantCulture);
             }
             finally
@@ -269,13 +277,20 @@ namespace HammerPlugin
 
                 _builder.Build(_parameters);
 
-                MessageBox.Show("✓ Модель успешно построена в КОМПАС-3D!",
-                    "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "✓ Модель успешно построена в КОМПАС-3D!",
+                    "Успех",
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"✗ Ошибка при построении:\n\n{ex.Message}",
-                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    $"Произошла ошибка при " +
+                    $"построении модели:\n{ex.Message}",
+                    "Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {

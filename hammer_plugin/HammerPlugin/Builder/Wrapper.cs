@@ -8,7 +8,6 @@ namespace HammerPlugin.Services
 {
     /// <summary>
     /// Обертка для работы с API КОМПАС-3D.
-    /// Отвечает за подключение к КОМПАСу и низкоуровневые операции построения.
     /// </summary>
     public class Wrapper
     {
@@ -35,24 +34,21 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Запускает КОМПАС-3D.
         /// </summary>
-        public void RunCAD()
+        public void OpenKompas()
         {
             if (_kompas != null)
             {
                 return;
             }
-
-            var t = Type.GetTypeFromProgID("KOMPAS.Application.5");
+            Type t = Type.GetTypeFromProgID("KOMPAS.Application.23")
+                ?? Type.GetTypeFromProgID("KOMPAS.Application.22")
+                ?? Type.GetTypeFromProgID("Kompas.Application.5");
             if (t == null)
             {
-                throw new InvalidOperationException(
-                    "Не найден ProgID KOMPAS.Application.5");
+                throw new Exception("КОМПАС не установлен");
             }
 
-            _kompas = (KompasObject)Activator.CreateInstance(t)
-                      ?? throw new InvalidOperationException(
-                          "Не удалось создать KompasObject.");
-
+            _kompas = (KompasObject)Activator.CreateInstance(t);
             _kompas.Visible = true;
             _kompas.ActivateControllerAPI();
         }
@@ -65,7 +61,7 @@ namespace HammerPlugin.Services
             if (_kompas == null)
             {
                 throw new InvalidOperationException(
-                    "Kompas не инициализирован. Сначала вызови AttachOrRunCAD().");
+                    "Kompas не инициализирован. Сначала вызови OpenKompas().");
             }
 
             _doc3D = (ksDocument3D)_kompas.Document3D()
@@ -80,23 +76,10 @@ namespace HammerPlugin.Services
         }
 
         /// <summary>
-        /// Возвращает верхнюю деталь (на случай, если захотим использовать её напрямую).
-        /// </summary>
-        public object GetTopPart()
-        {
-            if (_part == null)
-            {
-                throw new InvalidOperationException(
-                    "Документ ещё не создан. Вызови CreateDocument3D().");
-            }
-
-            return _part;
-        }
-
-        /// <summary>
         /// Создаёт эскиз на базовой плоскости.
         /// </summary>
-        /// <param name="plane">Название базовой плоскости: "XOY", "XOZ", "YOZ".</param>
+        /// <param name="plane">Название базовой плоскости:
+        /// "XOY", "XOZ", "YOZ".</param>
         /// <returns>Объект эскиза (ksEntity).</returns>
         public object CreateSketchOnPlane(string plane)
         {
@@ -119,9 +102,9 @@ namespace HammerPlugin.Services
                                "Не удалось получить базовую плоскость.");
 
             var sketchEntity = (ksEntity)_part
-                                .NewEntity((short)Obj3dType.o3d_sketch)
+                               .NewEntity((short)Obj3dType.o3d_sketch)
                                ?? throw new InvalidOperationException(
-                                   "Не удалось создать сущность o3d_sketch.");
+                                  "Не удалось создать сущность o3d_sketch.");
 
             var sketchDef = (ksSketchDefinition)sketchEntity.GetDefinition();
             sketchDef.SetPlane(basePlane);
@@ -143,7 +126,9 @@ namespace HammerPlugin.Services
         {
             if (_current2dDoc == null)
             {
-                throw new InvalidOperationException("Нет активного 2D-эскиза. Сначала вызови CreateSketchOnPlane().");
+                throw new InvalidOperationException(
+                    "Нет активного 2D-эскиза." +
+                    " Сначала вызови CreateSketchOnPlane().");
             }
 
             _current2dDoc.ksLineSeg(x1, y1, x2, y1, 1);
@@ -162,7 +147,8 @@ namespace HammerPlugin.Services
         {
             if (_current2dDoc == null)
             {
-                throw new InvalidOperationException("Нет активного 2D-эскиза." +
+                throw new InvalidOperationException(
+                    "Нет активного 2D-эскиза." +
                     " Сначала вызови CreateSketchOnPlane().");
             }
 
@@ -176,20 +162,24 @@ namespace HammerPlugin.Services
         /// <param name="yc">Y-координата центра эллипса.</param>
         /// <param name="xRadius">Радиус по оси X.</param>
         /// <param name="yRadius">Радиус по оси Y.</param>
-        public void DrawEllipse(double xc, double yc, double xRadius, double yRadius)
+        public void DrawEllipse(double xc, double yc,
+            double xRadius, double yRadius)
         {
             if (_current2dDoc == null)
             {
-                throw new InvalidOperationException("Нет активного 2D-эскиза." +
+                throw new InvalidOperationException(
+                    "Нет активного 2D-эскиза." +
                     " Сначала вызови CreateSketchOnPlane().");
             }
 
-            ksEllipseParam ellipseParam = (ksEllipseParam)_kompas.GetParamStruct(
+            ksEllipseParam ellipseParam = 
+                (ksEllipseParam)_kompas.GetParamStruct(
                 (short)StructType2DEnum.ko_EllipseParam);
 
             if (ellipseParam == null)
             {
-                throw new InvalidOperationException("Не удалось получить параметры эллипса.");
+                throw new InvalidOperationException(
+                    "Не удалось получить параметры эллипса.");
             }
 
             ellipseParam.Init();
@@ -206,12 +196,14 @@ namespace HammerPlugin.Services
         /// <summary>
         /// Завершает редактирование эскиза.
         /// </summary>
-        /// <param name="sketch">Объект эскиза (ksEntity), который нужно завершить редактировать.</param>
+        /// <param name="sketch">Объект эскиза (ksEntity), который нужно
+        /// завершить редактировать.</param>
         public void FinishSketch(object sketch)
         {
             if (sketch is not ksEntity sketchEntity)
             {
-                throw new ArgumentException("Ожидался объект эскиза (ksEntity).",
+                throw new ArgumentException(
+                    "Ожидался объект эскиза (ksEntity).",
                     nameof(sketch));
             }
 
@@ -225,24 +217,33 @@ namespace HammerPlugin.Services
         /// </summary>
         /// <param name="sketch">Эскиз (ksEntity) для выдавливания.</param>
         /// <param name="height">Высота выдавливания.</param>
-        /// <param name="direction">Направление выдавливания: true - прямое, false - обратное.</param>
-        /// <param name="symmetric">Флаг симметричного выдавливания в обе стороны от плоскости эскиза.</param>
-        public void Extrude(object sketch, double height, bool direction = true, bool symmetric = false)
+        /// <param name="direction">Направление выдавливания:
+        /// true - прямое, false - обратное.</param>
+        /// <param name="symmetric">Флаг симметричного выдавливания в обе
+        /// стороны от плоскости эскиза.</param>
+        public void Extrude(object sketch, double height,
+            bool direction = true, bool symmetric = false)
         {
             if (_part == null)
             {
-                throw new InvalidOperationException("Часть не инициализирована. Вызови CreateDocument3D().");
+                throw new InvalidOperationException(
+                    "Часть не инициализирована. Вызови CreateDocument3D().");
             }
 
             if (sketch is not ksEntity sketchEntity)
             {
-                throw new ArgumentException("Ожидался объект эскиза (ksEntity).", nameof(sketch));
+                throw new ArgumentException(
+                    "Ожидался объект эскиза (ksEntity).", nameof(sketch));
             }
 
-            ksEntity extr = _part.NewEntity((short)Obj3dType.o3d_baseExtrusion)
-                           ?? throw new InvalidOperationException("Не удалось создать сущность o3d_baseExtrusion.");
+            ksEntity extr = 
+                _part.NewEntity((short)Obj3dType.o3d_baseExtrusion)
+                          ?? throw new InvalidOperationException(
+                          "Не удалось создать сущность o3d_baseExtrusion.");
 
-            ksBaseExtrusionDefinition def = (ksBaseExtrusionDefinition)extr.GetDefinition();
+            ksBaseExtrusionDefinition def =
+                (ksBaseExtrusionDefinition)extr.GetDefinition();
+
             def.SetSketch(sketchEntity);
 
             ksExtrusionParam p = (ksExtrusionParam)def.ExtrusionParam();
@@ -278,22 +279,29 @@ namespace HammerPlugin.Services
         public void Cut(object sketch)
         {
             ksEntity op = _part.NewEntity((short)Obj3dType.o3d_cutExtrusion);
-            ksCutExtrusionDefinition def = (ksCutExtrusionDefinition)op.GetDefinition();
+            ksCutExtrusionDefinition def =
+                (ksCutExtrusionDefinition)op.GetDefinition();
             def.SetSketch(sketch);
             def.directionType = (short)Direction_Type.dtBoth;
             def.SetSideParam(true, (short)End_Type.etThroughAll, 0, 0, true);
-            def.SetSideParam(false, (short)End_Type.etThroughAll, 0, 0, true);
+            def.SetSideParam(false,(short)End_Type.etThroughAll, 0, 0, true);
             op.Create();
         }
 
         /// <summary>
-        /// Создаёт эскиз на плоскости, смещённой от заданной базовой плоскости.
+        /// Создаёт эскиз на плоскости, 
+        /// смещённой от заданной базовой плоскости.
         /// </summary>
-        /// <param name="plane">Базовая плоскость: "XOY", "XOZ", "YOZ".</param>
-        /// <param name="offset">Величина смещения от базовой плоскости.</param>
-        /// <param name="direction">Направление смещения: true - положительное, false - отрицательное.</param>
-        /// <returns>Объект эскиза (ksEntity) на смещенной плоскости.</returns>
-        public object CreateSketchOnOffsetPlane(string plane, double offset, bool direction)
+        /// <param name="plane">
+        /// Базовая плоскость: "XOY", "XOZ", "YOZ".</param>
+        /// <param name="offset">
+        /// Величина смещения от базовой плоскости.</param>
+        /// <param name="direction">
+        /// Направление смещения:
+        /// true - положительное, false - отрицательное.</param>
+        /// <returns>Объект эскиза на смещенной плоскости.</returns>
+        public object CreateSketchOnOffsetPlane(string plane, double offset,
+            bool direction)
         {
             if (_part == null)
                 throw new InvalidOperationException(
@@ -305,20 +313,22 @@ namespace HammerPlugin.Services
                 "XOZ" => (short)Obj3dType.o3d_planeXOZ,
                 "YOZ" => (short)Obj3dType.o3d_planeYOZ,
                 _ => throw new ArgumentException(
-                    "Неверное название базовой плоскости. Допустимые значения: \"XOY\", \"XOZ\", \"YOZ\"",
+                    "Неверное название базовой плоскости. " +
+                    "Допустимые значения: \"XOY\", \"XOZ\", \"YOZ\"",
                     nameof(plane))
             };
 
             var basePlane = (ksEntity)_part.GetDefaultEntity(planeType)
                            ?? throw new InvalidOperationException(
-                               $"Не удалось получить базовую плоскость {plane}.");
+                               $"Не удалось получить базовую плоскость.");
 
             var offsetPlaneEntity =
                 (ksEntity)_part.NewEntity((short)Obj3dType.o3d_planeOffset)
                 ?? throw new InvalidOperationException(
                     "Не удалось создать сущность o3d_planeOffset.");
 
-            var offsetDef = (ksPlaneOffsetDefinition)offsetPlaneEntity.GetDefinition();
+            var offsetDef = 
+                (ksPlaneOffsetDefinition)offsetPlaneEntity.GetDefinition();
             offsetDef.SetPlane(basePlane);
             offsetDef.direction = direction;
             offsetDef.offset = offset;
@@ -346,12 +356,15 @@ namespace HammerPlugin.Services
         {
             if (_part == null)
             {
-                throw new InvalidOperationException("Часть не инициализирована. Вызови CreateDocument3D().");
+                throw new InvalidOperationException(
+                    "Часть не инициализирована. Вызови CreateDocument3D().");
             }
 
             if (sections == null || sections.Count < 2)
             {
-                throw new ArgumentException("Для loft необходимо минимум два сечения.", nameof(sections));
+                throw new ArgumentException(
+                    "Для loft необходимо минимум два сечения.",
+                    nameof(sections));
             }
 
             var entities = new ksEntity[sections.Count];
@@ -364,15 +377,22 @@ namespace HammerPlugin.Services
                 }
                 else
                 {
-                    throw new ArgumentException($"Элемент с индексом {i} не является объектом ksEntity.", nameof(sections));
+                    throw new ArgumentException(
+                        $"Элемент с индексом {i}" +
+                        $" не является объектом ksEntity.",
+                        nameof(sections));
                 }
             }
 
-            ksEntity loftEntity = (ksEntity)_part.NewEntity((short)Obj3dType.o3d_baseLoft)
-                                 ?? throw new InvalidOperationException("Не удалось создать сущность o3d_baseLoft.");
+            ksEntity loftEntity = 
+                (ksEntity)_part.NewEntity((short)Obj3dType.o3d_baseLoft)
+                    ?? throw new InvalidOperationException(
+                        "Не удалось создать сущность o3d_baseLoft.");
 
-            ksBaseLoftDefinition loftDef = (ksBaseLoftDefinition)loftEntity.GetDefinition();
-            ksEntityCollection sectionsCollection = (ksEntityCollection)loftDef.Sketchs();
+            ksBaseLoftDefinition loftDef = 
+                (ksBaseLoftDefinition)loftEntity.GetDefinition();
+            ksEntityCollection sectionsCollection = 
+                (ksEntityCollection)loftDef.Sketchs();
             sectionsCollection.Clear();
             foreach (var section in entities)
             {
@@ -404,7 +424,6 @@ namespace HammerPlugin.Services
 
         /// <summary>
         /// Закрывает текущий 3D-документ КОМПАС-3D.
-        /// Используется для предотвращения накопления открытых документов и утечек памяти.
         /// </summary>
         public void CloseActiveDocument()
         {
@@ -419,7 +438,8 @@ namespace HammerPlugin.Services
             }
             catch
             {
-                throw new ArgumentException($"Ошибка при закрытии документа");
+                throw new ArgumentException(
+                    $"Ошибка при закрытии документа");
             }
             finally
             {
