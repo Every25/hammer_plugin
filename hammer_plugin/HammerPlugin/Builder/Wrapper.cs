@@ -2,6 +2,7 @@
 using Kompas6Constants;
 using Kompas6Constants3D;
 using System;
+using System.Runtime.InteropServices;
 
 
 namespace HammerPlugin.Services
@@ -32,23 +33,37 @@ namespace HammerPlugin.Services
         private ksDocument2D _current2dDoc;
 
         /// <summary>
-        /// Запускает КОМПАС-3D.
+        /// Подключается к запущенному КОМПАС-3D или запускает новый процесс.
+        /// Если подключение "протухло", пересоздает его.
         /// </summary>
         public void OpenKompas()
         {
             if (_kompas != null)
             {
-                return;
-            }
-            Type t = Type.GetTypeFromProgID("KOMPAS.Application.23")
-                ?? Type.GetTypeFromProgID("KOMPAS.Application.22")
-                ?? Type.GetTypeFromProgID("Kompas.Application.5");
-            if (t == null)
-            {
-                throw new Exception("КОМПАС не установлен");
+                try
+                {
+                    var isVisible = _kompas.Visible;
+                    return;
+                }
+                catch (COMException)
+                {
+                    ReleaseComObject(_kompas);
+                    _kompas = null;
+                }
             }
 
-            _kompas = (KompasObject)Activator.CreateInstance(t);
+            var t = Type.GetTypeFromProgID("KOMPAS.Application.5");
+            if (t == null)
+            {
+                throw new InvalidOperationException(
+                    "Не найден ProgID KOMPAS.Application.5. " +
+                    "Убедитесь, что КОМПАС-3D установлен.");
+            }
+
+            _kompas = (KompasObject)Activator.CreateInstance(t)
+                ?? throw new InvalidOperationException(
+                    "Не удалось создать KompasObject.");
+
             _kompas.Visible = true;
             _kompas.ActivateControllerAPI();
         }
@@ -420,6 +435,22 @@ namespace HammerPlugin.Services
             }
 
             _doc3D.SaveAs(path);
+        }
+
+        /// <summary>
+        /// Безопасно освобождает COM-объект.
+        /// </summary>
+        private static void ReleaseComObject(object comObject)
+        {
+            if (comObject == null)
+            {
+                return;
+            }
+
+            if (Marshal.IsComObject(comObject))
+            {
+                Marshal.FinalReleaseComObject(comObject);
+            }
         }
 
         /// <summary>
