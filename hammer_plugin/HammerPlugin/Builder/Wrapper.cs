@@ -52,6 +52,7 @@ namespace HammerPlugin.Services
                 }
             }
 
+            //TODO: RSDN
             var t = Type.GetTypeFromProgID("KOMPAS.Application.5");
             if (t == null)
             {

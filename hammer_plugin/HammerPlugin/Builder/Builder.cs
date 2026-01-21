@@ -6,6 +6,7 @@ using System.Globalization;
 
 namespace HammerPlugin.Services
 {
+    //TODO: refactor
     /// <summary>
     /// Строит 3D-модель молотка в КОМПАС-3D.
     /// </summary>

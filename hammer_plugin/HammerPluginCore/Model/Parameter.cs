@@ -45,6 +45,7 @@ namespace HammerPluginCore.Model
         public double Value
         {
             get => _value;
+            //TODO: validation
             set => _value = value;
         }
 
@@ -54,6 +55,7 @@ namespace HammerPluginCore.Model
         public double MinValue
         {
             get => _minValue;
+            //TODO: validation
             set => _minValue = value;
         }
 
@@ -63,6 +65,7 @@ namespace HammerPluginCore.Model
         public double MaxValue
         {
             get => _maxValue;
+            //TODO: validation
             set => _maxValue = value;
         }
     }
