@@ -65,6 +65,7 @@
             label11 = new Label();
             label12 = new Label();
             textBoxM = new TextBox();
+            checkBoxNail = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             groupBox1.SuspendLayout();
             SuspendLayout();
@@ -313,7 +314,7 @@
             // 
             // buttonBuild
             // 
-            buttonBuild.Location = new Point(192, 501);
+            buttonBuild.Location = new Point(193, 517);
             buttonBuild.Name = "buttonBuild";
             buttonBuild.Size = new Size(231, 53);
             buttonBuild.TabIndex = 4;
@@ -396,11 +397,22 @@
             textBoxM.Size = new Size(150, 31);
             textBoxM.TabIndex = 30;
             // 
+            // checkBoxNail
+            // 
+            checkBoxNail.AutoSize = true;
+            checkBoxNail.Location = new Point(347, 467);
+            checkBoxNail.Name = "checkBoxNail";
+            checkBoxNail.Size = new Size(126, 29);
+            checkBoxNail.TabIndex = 33;
+            checkBoxNail.Text = "Гвоздодер";
+            checkBoxNail.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1085, 723);
+            Controls.Add(checkBoxNail);
             Controls.Add(label11);
             Controls.Add(label12);
             Controls.Add(textBoxM);
@@ -437,6 +449,7 @@
             Controls.Add(textBoxC);
             Controls.Add(textBoxL);
             Controls.Add(textBoxD);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             Name = "MainForm";
             Text = "Молоток";
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
@@ -484,5 +497,6 @@
         private Label label11;
         private Label label12;
         private TextBox textBoxM;
+        private CheckBox checkBoxNail;
     }
 }

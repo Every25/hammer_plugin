@@ -11,9 +11,14 @@
         private readonly Dictionary<ParameterType, Parameter> _parameters;
 
         /// <summary>
+        /// Наличие гвоздодёра.
+        /// </summary>
+        public bool HasNailPuller { get; set; }
+
+        /// <summary>
         /// Список ошибок, возникших при валидации.
         /// </summary>
-        public List<ValidationError> _errorCollector;
+        private List<ValidationError> _errorCollector;
 
         /// <summary>
         /// Возвращает список ошибок.
@@ -70,9 +75,21 @@
         {
             var parameter = _parameters[type];
             double oldValue = parameter.Value;
-            parameter.Value = value;
-            UpdateCalculatedParameters();
-            Validate();
+            _errorCollector.Clear();
+            try
+            {
+                parameter.Value = value;
+                UpdateCalculatedParameters();
+                Validate();
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                _errorCollector.Add(new ValidationError(type,
+                    $"Значение параметра {type} ({value}) выходит за допустимые пределы " +
+                    $"[{parameter.MinValue}, {parameter.MaxValue}]."));
+                parameter.Value = oldValue;
+                UpdateCalculatedParameters();
+            }
         }
 
         /// <summary>
@@ -80,7 +97,6 @@
         /// </summary>
         public void Validate()
         {
-            _errorCollector.Clear();
             double neckDiameter =
                 _parameters[ParameterType.NeckDiameterB].Value;
             double faceDiameter =

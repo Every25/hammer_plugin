@@ -1,4 +1,4 @@
-﻿using HammerPlugin.Services;
+﻿using HammerPluginBuilder;
 using HammerPluginCore.Model;
 using System.Globalization;
 using System.Windows.Forms;
@@ -12,7 +12,7 @@ namespace HammerPlugin
     {
         /// <summary>
         /// Построитель 3D-модели, использующий API КОМПАС-3D
-        /// для создания геометрической модели на основе валидных параметров.
+        /// для создания геометрической моде ли на основе валидных параметров.
         /// </summary>
         private Builder _builder;
 
@@ -87,6 +87,8 @@ namespace HammerPlugin
               .ToString(CultureInfo.InvariantCulture);
             textBoxW.Text = _parameters.GetParam(ParameterType.ClawWidthW)
               .ToString(CultureInfo.InvariantCulture);
+
+            checkBoxNail.Checked = false;
         }
 
         /// <summary>
@@ -274,7 +276,8 @@ namespace HammerPlugin
                 buttonBuild.Enabled = false;
                 buttonBuild.Text = "Построение...";
                 Application.DoEvents();
-
+                bool nailPuller = checkBoxNail.Checked;
+                _parameters.HasNailPuller = nailPuller;
                 _builder.Build(_parameters);
 
                 MessageBox.Show(

@@ -3,10 +3,11 @@ using Kompas6API5;
 using System;
 using System.Drawing;
 using System.Globalization;
+using static System.Windows.Forms.AxHost;
 
-namespace HammerPlugin.Services
+namespace HammerPluginBuilder
 {
-    //TODO: refactor
+    //TODO: refactor +
     /// <summary>
     /// Строит 3D-модель молотка в КОМПАС-3D.
     /// </summary>
@@ -162,7 +163,7 @@ namespace HammerPlugin.Services
                 parameters.GetParam(ParameterType.ClawLengthL), true);
             try
             {
-                double firstRectLeftX = 
+                double firstRectLeftX =
                     parameters.GetParam(ParameterType.ClawWidthW) / 2;
                 double firstRectBottomY =
                     -parameters.GetParam(ParameterType.ClawWidthW) / 2;
@@ -182,6 +183,48 @@ namespace HammerPlugin.Services
                 sections.Add(sketch2);
             }
             _wrapper.Loft(sections);
+            
+            if (parameters.HasNailPuller)
+            {
+                BuildNailPuller(parameters);
+            }
+        }
+
+        /// <summary>
+        /// Создает отверстие гвоздодера.
+        /// </summary>
+        /// <param name="parameters">Параметры модели.</param>
+        private void BuildNailPuller(Parameters parameters)
+        {
+            object nailPullerSketch = _wrapper.CreateSketchOnPlane("XOY");
+            try
+            {
+                double xc =
+                    -parameters.GetParam(ParameterType.ClawLengthL) / 1.5;
+                double yc = 0;
+                double rad =
+                    parameters.GetParam(ParameterType.ClawWidthW) / 9.8;
+                double x1 = xc;
+                double y1 = yc + rad;
+                double x2 = xc;
+                double y2 = yc - rad;
+                _wrapper.DrawArcByThreePoints(
+                    xc, yc, rad, x1, y1, x2, y2, -1);
+                double x3 = 
+                    -parameters.GetParam(ParameterType.ClawLengthL);
+                double y3 = 
+                    parameters.GetParam(ParameterType.ClawWidthW) / 6;
+                double x4 = x3;
+                double y4 = -y3;
+                _wrapper.DrawLine(x1, y1, x3, y3);
+                _wrapper.DrawLine(x2, y2, x4, y4);
+                _wrapper.DrawLine(x3, y3, x4, y4);
+            }
+            finally
+            {
+                _wrapper.FinishSketch(nailPullerSketch);
+            }
+            _wrapper.Cut(nailPullerSketch);
         }
 
         /// <summary>

@@ -3,9 +3,10 @@ using Kompas6Constants;
 using Kompas6Constants3D;
 using System;
 using System.Runtime.InteropServices;
+using static System.Windows.Forms.AxHost;
 
 
-namespace HammerPlugin.Services
+namespace HammerPluginBuilder
 {
     /// <summary>
     /// Обертка для работы с API КОМПАС-3D.
@@ -52,16 +53,16 @@ namespace HammerPlugin.Services
                 }
             }
 
-            //TODO: RSDN
-            var t = Type.GetTypeFromProgID("KOMPAS.Application.5");
-            if (t == null)
+            //TODO: RSDN +
+            var kompasType = Type.GetTypeFromProgID("KOMPAS.Application.5");
+            if (kompasType == null)
             {
                 throw new InvalidOperationException(
                     "Не найден ProgID KOMPAS.Application.5. " +
                     "Убедитесь, что КОМПАС-3D установлен.");
             }
 
-            _kompas = (KompasObject)Activator.CreateInstance(t)
+            _kompas = (KompasObject)Activator.CreateInstance(kompasType)
                 ?? throw new InvalidOperationException(
                     "Не удалось создать KompasObject.");
 
@@ -188,7 +189,7 @@ namespace HammerPlugin.Services
                     " Сначала вызови CreateSketchOnPlane().");
             }
 
-            ksEllipseParam ellipseParam = 
+            ksEllipseParam ellipseParam =
                 (ksEllipseParam)_kompas.GetParamStruct(
                 (short)StructType2DEnum.ko_EllipseParam);
 
@@ -207,6 +208,53 @@ namespace HammerPlugin.Services
             ellipseParam.style = 1;
 
             _current2dDoc.ksEllipse(ellipseParam);
+        }
+
+        /// <summary>
+        /// Рисует линию между двумя точками.
+        /// </summary>
+        /// <param name="xStart">X-координата начальной точки.</param>
+        /// <param name="yStart">Y-координата начальной точки.</param>
+        /// <param name="xEnd">X-координата конечной точки.</param>
+        /// <param name="yEnd">Y-координата конечной точки.</param>
+        public void DrawLine(double xStart, double yStart,
+            double xEnd, double yEnd)
+        {
+            if (_current2dDoc == null)
+            {
+                throw new InvalidOperationException(
+                    "Нет активного 2D-эскиза." +
+                    " Сначала вызови CreateSketchOnPlane().");
+            }
+
+            _current2dDoc.ksLineSeg(xStart, yStart, xEnd, yEnd, 1);
+        }
+
+        /// <summary>
+        /// Рисует дугу по трем точкам.
+        /// </summary>
+        /// <param name="xc">X-координата центра дуги.</param>
+        /// <param name="yc">Y-координата центра дуги.</param>
+        /// <param name="rad">Радиус дуги.</param>
+        /// <param name="startX">X-координата начальной точки.</param>
+        /// <param name="startY">Y-координата начальной точки.</param>
+        /// <param name="endX">X-координата конечной точки.</param>
+        /// <param name="endY">Y-координата конечной точки.</param>
+        /// <param name="direction">Направление отрисовки дуги.
+        /// 1 - против часовой стрелки, -1 - по часовой стрелке.</param>
+        public void DrawArcByThreePoints(double xc, double yc,
+            double rad, double startX, double startY,
+            double endX, double endY, short direction)
+        {
+            if (_current2dDoc == null)
+            {
+                throw new InvalidOperationException(
+                    "Нет активного 2D-эскиза." +
+                    " Сначала вызови CreateSketchOnPlane().");
+            }
+
+            _current2dDoc.ksArcByPoint(xc, yc, rad, startX, startY,
+                endX, endY, direction, 1);
         }
 
         /// <summary>

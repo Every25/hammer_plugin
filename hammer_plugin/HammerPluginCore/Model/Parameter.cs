@@ -45,8 +45,18 @@ namespace HammerPluginCore.Model
         public double Value
         {
             get => _value;
-            //TODO: validation
-            set => _value = value;
+            //TODO: validation +
+            set
+            {
+                if (value < _minValue || value > _maxValue)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value),
+                        $"Значение {value} вне допустимого" +
+                        $" диапазона [{_minValue}, {_maxValue}]");
+                }
+                _value = value;
+            }
         }
 
         /// <summary>
@@ -55,8 +65,27 @@ namespace HammerPluginCore.Model
         public double MinValue
         {
             get => _minValue;
-            //TODO: validation
-            set => _minValue = value;
+            //TODO: validation +
+            set
+            {
+                if (value > _maxValue)
+                {
+                    throw new ArgumentException(
+                        $"Минимальное значение ({value}) не может быть больше " +
+                        $"максимального значения ({_maxValue}).",
+                        nameof(value));
+                }
+
+                if (_value < value)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value),
+                        $"Текущее значение ({_value}) меньше " +
+                        $"нового минимального значения ({value}). " +
+                        $"Сначала установите значение в допустимый диапазон.");
+                }
+
+                _minValue = value;
+            }
         }
 
         /// <summary>
@@ -65,8 +94,27 @@ namespace HammerPluginCore.Model
         public double MaxValue
         {
             get => _maxValue;
-            //TODO: validation
-            set => _maxValue = value;
+            //TODO: validation +
+            set
+            {
+                if (value < _minValue)
+                {
+                    throw new ArgumentException(
+                        $"Максимальное значение ({value}) не может быть меньше " +
+                        $"минимального значения ({_minValue}).",
+                        nameof(value));
+                }
+
+                if (_value > value)
+                {
+                    throw new InvalidOperationException(
+                        $"Текущее значение ({_value}) больше " +
+                        $"нового максимального значения ({value}). " +
+                        $"Сначала установите значение в допустимый диапазон.");
+                }
+
+                _maxValue = value;
+            }
         }
     }
 }
