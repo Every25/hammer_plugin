@@ -135,7 +135,6 @@ namespace HammerPlugin
         /// <param name="textBox">Текстовое поле.</param>
         private void OnDataChanged(ParameterType paramType, TextBox textBox)
         {
-            _parameters.ClearErrors();
             richTextBox1.Clear();
             bool hasBasicError = false;
 

@@ -228,7 +228,7 @@
             label8.Name = "label8";
             label8.Size = new Size(190, 25);
             label8.TabIndex = 7;
-            label8.Text = "Ширина отверстие y1";
+            label8.Text = "Ширина отверстия y1";
             // 
             // label7
             // 
@@ -237,7 +237,7 @@
             label7.Name = "label7";
             label7.Size = new Size(189, 25);
             label7.TabIndex = 6;
-            label7.Text = "Ширина отверстие x1";
+            label7.Text = "Ширина отверстия x1";
             // 
             // label6
             // 

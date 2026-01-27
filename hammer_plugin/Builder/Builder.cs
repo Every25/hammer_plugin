@@ -1,9 +1,10 @@
 ﻿using HammerPluginCore.Model;
 using Kompas6API5;
 using System;
-using System.Drawing;
+using System.Collections.Generic;
 using System.Globalization;
-using static System.Windows.Forms.AxHost;
+using System.IO;
+using System.Linq;
 
 namespace HammerPluginBuilder
 {
@@ -19,9 +20,9 @@ namespace HammerPluginBuilder
         private readonly Wrapper _wrapper;
 
         /// <summary>
-        /// Путь к текущей папке сборки
+        /// Список временных файлов для удаления после сборки
         /// </summary>
-        private string _currentAssemblyDirectory;
+        private readonly List<string> _tempFiles = new List<string>();
 
         /// <summary>
         /// Инициализирует новый экземпляр класса.
@@ -39,24 +40,90 @@ namespace HammerPluginBuilder
         {
             _wrapper.OpenKompas();
 
-            _currentAssemblyDirectory =
-                CreateUniqueAssemblyDirectory(parameters);
+            string modelsBasePath = GetModelsBasePath();
+            string assemblyFileName = CreateUniqueAssemblyName(parameters);
+            string assemblyPath = Path.Combine(modelsBasePath, assemblyFileName);
 
-            string headFileName = "HammerHead.m3d";
-            string handleFileName = "HammerHandle.m3d";
-            string assemblyFileName = "Assembly.a3d";
+            string tempFolder = Path.GetTempPath();
+            string headPartPath = Path.Combine(tempFolder,
+                $"HammerHead_{Guid.NewGuid():N}.m3d");
+            string handlePartPath = Path.Combine(tempFolder, 
+                $"HammerHandle_{Guid.NewGuid():N}.m3d");
 
-            string headPartPath =
-                Path.Combine(_currentAssemblyDirectory, headFileName);
-            string handlePartPath =
-                Path.Combine(_currentAssemblyDirectory, handleFileName);
-            string assemblyPath =
-                Path.Combine(_currentAssemblyDirectory, assemblyFileName);
+            _tempFiles.Add(headPartPath);
+            _tempFiles.Add(handlePartPath);
 
-            BuildHammerHead(parameters, headPartPath);
-            BuildHandle(parameters, handlePartPath);
+            try
+            {
+                BuildHammerHead(parameters, headPartPath);
+                BuildHandle(parameters, handlePartPath);
+                BuildAssembly(headPartPath, handlePartPath, assemblyPath);
+            }
+            finally
+            {
+                CleanupTempFiles();
+            }
+        }
 
-            BuildAssembly(headPartPath, handlePartPath, assemblyPath);
+        /// <summary>
+        /// Получает базовый путь для сохранения моделей
+        /// </summary>
+        private static string GetModelsBasePath()
+        {
+            string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string modelsPath = Path.Combine(documentsPath, "HammerPlugin", "Models");
+
+            if (!Directory.Exists(modelsPath))
+            {
+                Directory.CreateDirectory(modelsPath);
+            }
+
+            return modelsPath;
+        }
+
+        /// <summary>
+        /// Создает уникальное имя для файла сборки
+        /// </summary>
+        private static string CreateUniqueAssemblyName(Parameters parameters)
+        {
+            string baseName = string.Format(
+                CultureInfo.InvariantCulture,
+                "Hammer_H{0:0}_L{1:0}_D{2:0}_{3}_{4:yyyyMMdd_HHmmss}",
+                parameters.GetParam(ParameterType.HeightH),
+                parameters.GetParam(ParameterType.LengthL),
+                parameters.GetParam(ParameterType.FaceDiameterD),
+                parameters.HasNailPuller ? "WithNailPuller" : "NoNailPuller",
+                DateTime.Now
+            );
+
+            string modelsPath = GetModelsBasePath();
+            string assemblyName = baseName + ".a3d";
+            string fullPath = Path.Combine(modelsPath, assemblyName);
+            int counter = 1;
+            while (File.Exists(fullPath))
+            {
+                assemblyName = $"{baseName}_{counter:00}.a3d";
+                fullPath = Path.Combine(modelsPath, assemblyName);
+                counter++;
+            }
+
+            return assemblyName;
+        }
+
+        /// <summary>
+        /// Удаляет временные файлы
+        /// </summary>
+        private void CleanupTempFiles()
+        {
+            foreach (var filePath in _tempFiles)
+            {
+
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            _tempFiles.Clear();
         }
 
         /// <summary>
@@ -78,20 +145,15 @@ namespace HammerPluginBuilder
         /// <summary>
         /// Строит основное тело головки молотка.
         /// </summary>
-        /// <param name="parameters">Параметры модели.</param>
         private void BuildHeadBody(Parameters parameters)
         {
             List<ksEntity> sections = new List<ksEntity>();
 
-            double size =
-                parameters.GetParam(ParameterType.ClawWidthW);
-
+            double size = parameters.GetParam(ParameterType.ClawWidthW);
             double middleDiameter = 
                 parameters.GetParam(ParameterType.NeckDiameterB) / 1.4;
-
-            double neckExtr = 
-                parameters.GetParam(ParameterType.NeckWidthA) 
-                + (parameters.GetParam(ParameterType.FaceWidthC) / 2);
+            double neckExtr = parameters.GetParam(ParameterType.NeckWidthA) + 
+                (parameters.GetParam(ParameterType.FaceWidthC) / 2);
 
             ksEntity sketch1 = _wrapper.CreateSketchOnPlane("YOZ");
             try
@@ -100,9 +162,7 @@ namespace HammerPluginBuilder
                 double bottomY = -size / 2;
                 double rightX = size / 2;
                 double topY = size / 2;
-
                 _wrapper.DrawRectangle(leftX, bottomY, rightX, topY);
-
             }
             finally
             {
@@ -110,8 +170,8 @@ namespace HammerPluginBuilder
                 sections.Add(sketch1);
             }
 
-            ksEntity sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
-                parameters.GetParam(ParameterType.MiddleM) / 4, false);
+            ksEntity sketch2 = _wrapper.CreateSketchOnOffsetPlane(
+                "YOZ", parameters.GetParam(ParameterType.MiddleM) / 4, false);
             try
             {
                 _wrapper.DrawCircle(0, 0, middleDiameter / 2);
@@ -122,8 +182,8 @@ namespace HammerPluginBuilder
                 sections.Add(sketch2);
             }
 
-            ksEntity sketch3 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
-                parameters.GetParam(ParameterType.MiddleM) / 2, false);
+            ksEntity sketch3 = _wrapper.CreateSketchOnOffsetPlane(
+                "YOZ", parameters.GetParam(ParameterType.MiddleM) / 2, false);
             try
             {
                 _wrapper.DrawCircle(0, 0, middleDiameter / 2);
@@ -134,8 +194,8 @@ namespace HammerPluginBuilder
                 sections.Add(sketch3);
             }
 
-            ksEntity sketch4 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
-                parameters.GetParam(ParameterType.MiddleM), false);
+            ksEntity sketch4 = _wrapper.CreateSketchOnOffsetPlane(
+                "YOZ", parameters.GetParam(ParameterType.MiddleM), false);
             try
             {
                 _wrapper.DrawCircle(0, 0, 
@@ -150,12 +210,12 @@ namespace HammerPluginBuilder
             _wrapper.Loft(sections);
             _wrapper.Extrude(sketch4, neckExtr, false);
 
-            ksEntity sketch5 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
-                parameters.GetParam(ParameterType.MiddleM) 
-                + neckExtr, false);
+            ksEntity sketch5 = _wrapper.CreateSketchOnOffsetPlane(
+                "YOZ", parameters.GetParam(ParameterType.MiddleM) +
+                neckExtr, false);
             try
             {
-                _wrapper.DrawCircle(0, 0, 
+                _wrapper.DrawCircle(0, 0,
                     parameters.GetParam(ParameterType.FaceDiameterD) / 2);
             }
             finally
@@ -167,11 +227,9 @@ namespace HammerPluginBuilder
                 parameters.GetParam(ParameterType.FaceWidthC), false, true);
         }
 
-
         /// <summary>
         /// Строит носок молотка.
         /// </summary>
-        /// <param name="parameters">Параметры модели.</param>
         private void BuildClaw(Parameters parameters)
         {
             List<ksEntity> sections = new List<ksEntity>();
@@ -183,21 +241,19 @@ namespace HammerPluginBuilder
                 double bottomY = -size / 2;
                 double rightX = size / 2;
                 double topY = size / 2;
-
                 _wrapper.DrawRectangle(leftX, bottomY, rightX, topY);
-
             }
             finally
             {
                 _wrapper.FinishSketch(sketch1);
                 sections.Add(sketch1);
             }
-            sections.Add(sketch1);
+
             ksEntity sketch2 = _wrapper.CreateSketchOnOffsetPlane("YOZ",
                 parameters.GetParam(ParameterType.ClawLengthL), true);
             try
             {
-                double firstRectLeftX =
+                double firstRectLeftX = 
                     parameters.GetParam(ParameterType.ClawWidthW) / 2;
                 double firstRectBottomY =
                     -parameters.GetParam(ParameterType.ClawWidthW) / 2;
@@ -208,7 +264,6 @@ namespace HammerPluginBuilder
                 double bottomY = firstRectBottomY;
                 double rightX = firstRectLeftX + height;
                 double topY = firstRectBottomY + width;
-
                 _wrapper.DrawRectangle(leftX, bottomY, rightX, topY);
             }
             finally
@@ -217,7 +272,7 @@ namespace HammerPluginBuilder
                 sections.Add(sketch2);
             }
             _wrapper.Loft(sections);
-            
+
             if (parameters.HasNailPuller)
             {
                 BuildNailPuller(parameters);
@@ -227,13 +282,13 @@ namespace HammerPluginBuilder
         /// <summary>
         /// Создает отверстие гвоздодера.
         /// </summary>
-        /// <param name="parameters">Параметры модели.</param>
         private void BuildNailPuller(Parameters parameters)
         {
-            ksEntity nailPullerSketch = _wrapper.CreateSketchOnPlane("XOY");
+            ksEntity nailPullerSketch = 
+                _wrapper.CreateSketchOnPlane("XOY");
             try
             {
-                double xc =
+                double xc = 
                     -parameters.GetParam(ParameterType.ClawLengthL) / 1.5;
                 double yc = 0;
                 double rad =
@@ -242,11 +297,11 @@ namespace HammerPluginBuilder
                 double y1 = yc + rad;
                 double x2 = xc;
                 double y2 = yc - rad;
-                _wrapper.DrawArcByThreePoints(
-                    xc, yc, rad, x1, y1, x2, y2, -1);
+                _wrapper.DrawArcByThreePoints(xc, yc, rad, 
+                    x1, y1, x2, y2, -1);
                 double x3 = 
                     -parameters.GetParam(ParameterType.ClawLengthL);
-                double y3 = 
+                double y3 =
                     parameters.GetParam(ParameterType.ClawWidthW) / 6;
                 double x4 = x3;
                 double y4 = -y3;
@@ -264,14 +319,13 @@ namespace HammerPluginBuilder
         /// <summary>
         /// Создает отверстие согласно заданным параметрам.
         /// </summary>
-        /// <param name="parameters">Параметры модели.</param>
         private void BuildHole(Parameters parameters)
         {
             ksEntity ellipseSketch = _wrapper.CreateSketchOnPlane("XOY");
             try
             {
                 _wrapper.DrawEllipse(
-                    parameters.GetParam(ParameterType.MiddleM) / 2, 0, 
+                    parameters.GetParam(ParameterType.MiddleM) / 2, 0,
                     parameters.GetParam(ParameterType.HeadHoleY1) / 2,
                     parameters.GetParam(ParameterType.HeadHoleX1) / 2);
             }
@@ -304,10 +358,10 @@ namespace HammerPluginBuilder
             }
 
             _wrapper.Extrude(ellipseSketch,
-                parameters.GetParam(ParameterType.FaceDiameterD) / 2, true);
-
-            _wrapper.Extrude(ellipseSketch,
-                parameters.GetParam(ParameterType.HeightH) -
+                parameters.GetParam(ParameterType.FaceDiameterD) / 2,
+                true);
+            _wrapper.Extrude(ellipseSketch, 
+                parameters.GetParam(ParameterType.HeightH) - 
                 (parameters.GetParam(ParameterType.FaceDiameterD) / 2),
                 false);
 
@@ -318,7 +372,7 @@ namespace HammerPluginBuilder
         /// <summary>
         /// Создает сборку из головки и рукоятки молотка.
         /// </summary>
-        private void BuildAssembly(string headPartPath,
+        private void BuildAssembly(string headPartPath, 
             string handlePartPath, string assemblySavePath)
         {
             _wrapper.ResetForNewPart();
@@ -331,54 +385,14 @@ namespace HammerPluginBuilder
 
             _wrapper.UpdateAssembly();
             _wrapper.SaveAssemblyAs(assemblySavePath);
-            //_wrapper.CloseActiveDocument();
         }
 
         /// <summary>
-        /// Создает уникальную папку для хранения файлов текущей сборки
+        /// Закрывает текущий документ без сохранения.
         /// </summary>
-        /// <param name="parameters">Параметры модели</param>
-        /// <returns>Путь к созданной папке</returns>
-        private static string CreateUniqueAssemblyDirectory(
-            Parameters parameters)
+        public void CloseDocument()
         {
-            var baseDocumentsPath = Environment.GetFolderPath(
-                Environment.SpecialFolder.MyDocuments);
-
-            var hammerBaseDir = Path.Combine(
-                baseDocumentsPath, "HammerPlugin", "Models");
-
-            string folderName = CreateAssemblyFolderName(parameters);
-            var assemblyDir = Path.Combine(hammerBaseDir, folderName);
-            int counter = 1;
-            string originalAssemblyDir = assemblyDir;
-            while (Directory.Exists(assemblyDir))
-            {
-                assemblyDir = $"{originalAssemblyDir}_{counter:00}";
-                counter++;
-            }
-
-            Directory.CreateDirectory(assemblyDir);
-            return assemblyDir;
+            _wrapper.CloseActiveDocument();
         }
-
-        /// <summary>
-        /// Формирует имя папки для сборки на основе параметров
-        /// </summary>
-        private static string CreateAssemblyFolderName(Parameters parameters)
-        {
-            string format = "Hammer_H{0:0}_L{1:0}_D{2:0}_{3}_{4:yyyyMMdd_HHmmss}";
-
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                format,
-                parameters.GetParam(ParameterType.HeightH),
-                parameters.GetParam(ParameterType.LengthL),
-                parameters.GetParam(ParameterType.FaceDiameterD),
-                parameters.HasNailPuller ? "WithPuller" : "NoPuller",
-                DateTime.Now
-            );
-        }
-
     }
 }

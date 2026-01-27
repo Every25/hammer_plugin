@@ -56,6 +56,27 @@
         }
 
         /// <summary>
+        /// Удаляет все ошибки, связанные с конкретным типом параметра.
+        /// </summary>
+        /// <param name="parameterType">Тип параметра, для
+        /// которого удаляются ошибки</param>
+        public void RemoveErrorsForParameter(ParameterType parameterType)
+        {
+            _errorCollector.RemoveAll(error => error.ParameterType == parameterType);
+        }
+
+        /// <summary>
+        /// Удаляет все ошибки валидации взаимосвязанных параметров.
+        /// </summary>
+        public void RemoveValidationErrors()
+        {
+            _errorCollector.RemoveAll(error =>
+                error.Message.Contains("должен быть меньше") ||
+                error.Message.Contains("должна быть меньше") ||
+                error.Message.Contains("должна быть не больше"));
+        }
+
+        /// <summary>
         /// Возвращает значение параметра по названию.
         /// </summary>
         /// <param name="type">Тип параметра.</param>
@@ -73,23 +94,23 @@
         /// <param name="value">Новое значение.</param>
         public void SetParameter(ParameterType type, double value)
         {
+            RemoveErrorsForParameter(type);
+            RemoveValidationErrors();
+
             var parameter = _parameters[type];
-            double oldValue = parameter.Value;
-            _errorCollector.Clear();
             try
             {
                 parameter.Value = value;
-                UpdateCalculatedParameters();
-                Validate();
             }
             catch (ArgumentOutOfRangeException)
             {
                 _errorCollector.Add(new ValidationError(type,
                     $"Значение параметра {type} ({value}) выходит за допустимые пределы " +
                     $"[{parameter.MinValue}, {parameter.MaxValue}]."));
-                parameter.Value = oldValue;
-                UpdateCalculatedParameters();
             }
+
+            UpdateCalculatedParameters();
+            Validate(); 
         }
 
         /// <summary>
@@ -97,78 +118,51 @@
         /// </summary>
         public void Validate()
         {
-            double neckDiameter =
-                _parameters[ParameterType.NeckDiameterB].Value;
-            double faceDiameter =
-                _parameters[ParameterType.FaceDiameterD].Value;
-            double clawWidth =
-                _parameters[ParameterType.ClawWidthW].Value;
-            double headHoleX1 =
-                _parameters[ParameterType.HeadHoleX1].Value;
-            double headHoleY1 = 
-                _parameters[ParameterType.HeadHoleY1].Value;
-            double middle =
-                _parameters[ParameterType.MiddleM].Value;
+            double neckDiameter = _parameters[ParameterType.NeckDiameterB].Value;
+            double faceDiameter = _parameters[ParameterType.FaceDiameterD].Value;
+            double clawWidth = _parameters[ParameterType.ClawWidthW].Value;
+            double headHoleX1 = _parameters[ParameterType.HeadHoleX1].Value;
+            double headHoleY1 = _parameters[ParameterType.HeadHoleY1].Value;
+            double middle = _parameters[ParameterType.MiddleM].Value;
 
-            // Проверка диапазонов.
-            foreach (var kvp in _parameters)
-            {
-                var parameterType = kvp.Key;
-                var parameter = kvp.Value;
-
-                if (parameter.Value < parameter.MinValue ||
-                    parameter.Value > parameter.MaxValue)
-                {
-                    _errorCollector.Add(new ValidationError(parameterType,
-                        $"Значение параметра {parameterType}" +
-                        $" выходит за допустимые пределы " +
-                        $"[{parameter.MinValue}, {parameter.MaxValue}]."));
-                }
-            }
-
-            // Проверка взаимосвязанных параметров.
             if (neckDiameter >= faceDiameter)
             {
                 _errorCollector.Add(new ValidationError(
                     ParameterType.NeckDiameterB,
-                    $"Диаметр выступа b должен быть меньше " +
-                    $"диаметра бойка D."));
+                    $"Диаметр выступа b должен быть меньше диаметра бойка D."));
                 _errorCollector.Add(new ValidationError(
                     ParameterType.FaceDiameterD,
-                    $"Диаметр выступа b должен быть меньше" +
-                    $" диаметра бойка D."));
+                    $"Диаметр выступа b должен быть меньше диаметра бойка D."));
             }
 
             if (headHoleX1 >= neckDiameter)
             {
                 _errorCollector.Add(new ValidationError(
                     ParameterType.HeadHoleX1,
-                    $"Ширина отверстия x1 должна быть меньше" +
-                    $" ширины выступа b."));
+                    $"Ширина отверстия x1 должна быть меньше ширины выступа b."));
                 _errorCollector.Add(new ValidationError(
                     ParameterType.NeckDiameterB,
-                    $"Ширина отверстия x1 должна быть меньше " +
-                    $"ширины выступа b."));
+                    $"Ширина отверстия x1 должна быть меньше ширины выступа b."));
             }
 
             if (headHoleY1 >= middle)
             {
                 _errorCollector.Add(new ValidationError(
+                   ParameterType.MiddleM,
+                   $"Ширина отверстия y1 должна быть меньше длины средней части m."));
+                _errorCollector.Add(new ValidationError(
                     ParameterType.HeadHoleY1,
-                    $"Ширина отверстия y1 должна быть меньше " +
-                    $"длины средней части m."));
+                    $"Ширина отверстия y1 должна быть меньше длины средней части m."));
             }
 
             if (clawWidth > faceDiameter)
             {
                 _errorCollector.Add(new ValidationError(
                     ParameterType.ClawWidthW,
-                    $"Ширина носка w должна быть не больше " +
-                    $"диаметра бойка D."));
+                    $"Ширина носка w должна быть не больше диаметра бойка D."));
                 _errorCollector.Add(new ValidationError(
                     ParameterType.FaceDiameterD,
-                    $"Ширина носка w должна быть не больше " +
-                    $"диаметра бойка D."));
+                    $"Ширина носка w должна быть не больше диаметра бойка D."));
             }
         }
 

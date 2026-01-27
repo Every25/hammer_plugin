@@ -72,7 +72,7 @@ namespace HammerPluginTests
             double newMiddleM = 100;
 
             parameters.SetParameter(ParameterType.MiddleM, newMiddleM);
-            double expectedLengthL = 
+            double expectedLengthL =
                 originalLengthL + (newMiddleM - originalMiddleM);
 
             Assert.Multiple(() =>
@@ -231,7 +231,7 @@ namespace HammerPluginTests
 
             var rangeErrors = parameters.ErrorCollector.Count(
                 e => e.Message.Contains("выходит за допустимые пределы"));
-            Assert.AreEqual(12, rangeErrors);
+            Assert.AreEqual(10, rangeErrors);
         }
 
         [Test]
@@ -254,7 +254,7 @@ namespace HammerPluginTests
 
             var rangeErrors = parameters.ErrorCollector.Count(
                 e => e.Message.Contains("выходит за допустимые пределы"));
-            Assert.AreEqual(12, rangeErrors);
+            Assert.AreEqual(10, rangeErrors);
         }
 
         [Test]
@@ -334,10 +334,10 @@ namespace HammerPluginTests
             Assert.Multiple(() =>
             {
                 Assert.AreEqual(
-                    newHeadHoleX1, 
+                    newHeadHoleX1,
                     parameters.GetParam(ParameterType.HandleWidthX2));
                 Assert.AreEqual(
-                    newHeadHoleY1, 
+                    newHeadHoleY1,
                     parameters.GetParam(ParameterType.HandleWidthY2));
             });
         }
@@ -383,14 +383,82 @@ namespace HammerPluginTests
             var expectedValue =
                 parameters.GetParam(ParameterType.HeadHoleY1);
             var arbitraryValue = 999;
-            
+
             parameters
                 .SetParameter(ParameterType.HandleWidthY2, arbitraryValue);
-            var actualValue = 
+            var actualValue =
                 parameters.GetParam(ParameterType.HandleWidthY2);
 
             Assert.AreNotEqual(arbitraryValue, actualValue);
             Assert.AreEqual(expectedValue, actualValue);
+        }
+
+
+        [Test]
+        [Description("RemoveErrorsForParameter удаляет ошибки " +
+            "для указанного типа параметра")]
+        public void RemoveErrorsForParameter_WithExistingErrors_ShouldRemoveErrors()
+        {
+            var parameters = new Parameters();
+
+            parameters.ErrorCollector.Add(
+                new ValidationError(ParameterType.HeightH,
+                "Ошибка высоты"));
+            parameters.ErrorCollector.Add(
+                new ValidationError(ParameterType.LengthL,
+                "Ошибка длины"));
+            parameters.ErrorCollector.Add(
+                new ValidationError(ParameterType.HeightH,
+                "Еще одна ошибка высоты"));
+
+            parameters.RemoveErrorsForParameter(ParameterType.HeightH);
+
+            Assert.AreEqual(1, parameters.ErrorCollector.Count,
+                "Должна остаться только одна ошибка");
+            Assert.AreEqual(ParameterType.LengthL,
+                parameters.ErrorCollector[0].ParameterType,
+                "Оставшаяся ошибка должна быть для LengthL");
+        }
+
+        [Test]
+        [Description("RemoveValidationErrors удаляет все " +
+            "ошибки взаимосвязанных параметров")]
+        public void RemoveValidationErrors_WithValidationErrors_ShouldRemoveAllRelatedErrors()
+        {
+
+            var parameters = new Parameters();
+
+            parameters.ErrorCollector.Add(new ValidationError(
+                ParameterType.NeckDiameterB,
+                "Диаметр выступа b должен быть меньше " +
+                "диаметра бойка D."));
+
+            parameters.ErrorCollector.Add(new ValidationError(
+                ParameterType.FaceDiameterD,
+                "Диаметр выступа b должен быть меньше " +
+                "диаметра бойка D."));
+
+            parameters.ErrorCollector.Add(new ValidationError(
+                ParameterType.HeadHoleX1,
+                "Ширина отверстия x1 должна быть меньше " +
+                "ширины выступа b."));
+
+            parameters.ErrorCollector.Add(new ValidationError(
+                ParameterType.HeightH,
+                "Значение параметра HeightH (700) выходит " +
+                "за допустимые пределы [150, 600]."));
+
+            parameters.RemoveValidationErrors();
+
+
+            Assert.AreEqual(1, parameters.ErrorCollector.Count);
+
+            var remainingErrorMessages = 
+                parameters.ErrorCollector.Select(e => e.Message).ToList();
+
+            Assert.IsFalse(remainingErrorMessages.Any(
+                m => m.Contains("должен быть меньше")),
+                "Не должно остаться ошибок с 'должен быть меньше'");
         }
     }
 }
