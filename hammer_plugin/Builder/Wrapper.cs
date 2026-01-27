@@ -2,6 +2,7 @@
 using Kompas6Constants;
 using Kompas6Constants3D;
 using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using static System.Windows.Forms.AxHost;
 
@@ -26,7 +27,7 @@ namespace HammerPluginBuilder
         /// <summary>
         /// Деталь в 3D документе.
         /// </summary>
-        private ksPart _part;
+        private ksPart _currentPart;
 
         /// <summary>
         /// Текущий 2D-документ эскиза.
@@ -34,8 +35,12 @@ namespace HammerPluginBuilder
         private ksDocument2D _current2dDoc;
 
         /// <summary>
+        /// Флаг, показывающий активен ли режим сборки.
+        /// </summary>
+        private bool _isAssemblyMode;
+
+        /// <summary>
         /// Подключается к запущенному КОМПАС-3D или запускает новый процесс.
-        /// Если подключение "протухло", пересоздает его.
         /// </summary>
         public void OpenKompas()
         {
@@ -87,9 +92,128 @@ namespace HammerPluginBuilder
 
             _doc3D.Create();
 
-            _part = (ksPart)_doc3D.GetPart((short)Part_Type.pTop_Part)
+            _currentPart = (ksPart)_doc3D.GetPart((short)Part_Type.pTop_Part)
                        ?? throw new InvalidOperationException(
                            "Не удалось получить верхнюю деталь.");
+        }
+
+        /// <summary>
+        /// Создает новый документ сборки.
+        /// </summary>
+        public void CreateAssemblyDocument()
+        {
+            if (_kompas == null)
+            {
+                throw new InvalidOperationException(
+                    "Kompas не инициализирован. Сначала вызови OpenKompas().");
+            }
+
+            _doc3D = (ksDocument3D)_kompas.Document3D()
+                     ?? throw new InvalidOperationException(
+                         "Не удалось создать документ 3D.");
+
+            _doc3D.Create(false, false);
+            _isAssemblyMode = true;
+        }
+
+
+        /// <summary>
+        /// Вставляет деталь из файла в сборку.
+        /// </summary>
+        /// <param name="partFilePath">Путь к файлу детали.</param>
+        /// <param name="attachPlane">Плоскость для присоединения.</param>
+        public void InsertPartIntoAssembly(string partFilePath,
+            ksEntity attachPlane = null)
+        {
+            if (!_isAssemblyMode || _doc3D == null)
+                throw new InvalidOperationException(
+                    "Для вставки детали сначала создайте сборку.");
+
+            if (!File.Exists(partFilePath))
+                throw new FileNotFoundException(
+                    $"Файл детали не найден: {partFilePath}");
+
+            ksPart insertedPart = 
+                (ksPart)_doc3D.GetPart((short)Part_Type.pNew_Part)
+                ?? throw new InvalidOperationException(
+                    "Не удалось создать новую часть в сборке.");
+
+            insertedPart.fileName = partFilePath;
+            if (!_doc3D.SetPartFromFile(partFilePath, insertedPart, false))
+            {
+                throw new InvalidOperationException(
+                    $"Не удалось загрузить деталь из файла: {partFilePath}");
+            }
+            insertedPart.Update();
+            if (attachPlane != null)
+            {
+                ksEntity partPlane = 
+                    (ksEntity)insertedPart
+                    .GetDefaultEntity((short)Obj3dType.o3d_planeXOY);
+                if (partPlane != null && attachPlane != null)
+                {
+                    _doc3D.AddMateConstraint(
+                        (short)MateConstraintType.mc_Coincidence,
+                        partPlane,
+                        attachPlane,
+                        1, 1, 0
+                    );
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Получает плоскость отверстия в головке молотка 
+        /// для сопряжения с ручкой.
+        /// </summary>
+        public ksEntity GetHolePlaneForMating()
+        {
+            if (!_isAssemblyMode || _doc3D == null)
+                throw new InvalidOperationException(
+                    "Сборка не инициализирована.");
+
+            ksPart assemblyPart =
+                (ksPart)_doc3D.GetPart((short)Part_Type.pTop_Part)
+                ?? throw new InvalidOperationException(
+                    "Не удалось получить верхнюю часть сборки.");
+
+            ksEntityCollection entityCollection = 
+                (ksEntityCollection)assemblyPart.EntityCollection(0);
+
+            for (int i = 0; i < entityCollection.GetCount(); i++)
+            {
+                ksEntity entity = (ksEntity)entityCollection.GetByIndex(i);
+                if (entity != null && entity.IsIt((short)Obj3dType.o3d_face))
+                {
+                    ksFaceDefinition faceDef = 
+                        (ksFaceDefinition)entity.GetDefinition();
+                    if (faceDef != null && faceDef.IsPlanar())
+                    {
+                        return entity;
+                    }
+                }
+            }
+
+            return (ksEntity)assemblyPart
+                .GetDefaultEntity((short)Obj3dType.o3d_planeXOY);
+        }
+
+        /// <summary>
+        /// Обновляет сборку после добавления деталей.
+        /// </summary>
+        public void UpdateAssembly()
+        {
+            if (!_isAssemblyMode || _doc3D == null)
+                throw new InvalidOperationException(
+                    "Сборка не инициализирована.");
+
+            ksPart assemblyPart = (ksPart)_doc3D
+                .GetPart((short)Part_Type.pTop_Part);
+            if (assemblyPart != null)
+            {
+                assemblyPart.Update();
+            }
         }
 
         /// <summary>
@@ -98,9 +222,9 @@ namespace HammerPluginBuilder
         /// <param name="plane">Название базовой плоскости:
         /// "XOY", "XOZ", "YOZ".</param>
         /// <returns>Объект эскиза (ksEntity).</returns>
-        public object CreateSketchOnPlane(string plane)
+        public ksEntity CreateSketchOnPlane(string plane)
         {
-            if (_part == null)
+            if (_currentPart == null)
             {
                 throw new InvalidOperationException(
                     "Часть не инициализирована. Вызови CreateDocument3D().");
@@ -114,11 +238,11 @@ namespace HammerPluginBuilder
                 _ => (short)Obj3dType.o3d_planeXOY
             };
 
-            var basePlane = (ksEntity)_part.GetDefaultEntity(planeType)
+            var basePlane = (ksEntity)_currentPart.GetDefaultEntity(planeType)
                            ?? throw new InvalidOperationException(
                                "Не удалось получить базовую плоскость.");
 
-            var sketchEntity = (ksEntity)_part
+            var sketchEntity = (ksEntity)_currentPart
                                .NewEntity((short)Obj3dType.o3d_sketch)
                                ?? throw new InvalidOperationException(
                                   "Не удалось создать сущность o3d_sketch.");
@@ -262,7 +386,7 @@ namespace HammerPluginBuilder
         /// </summary>
         /// <param name="sketch">Объект эскиза (ksEntity), который нужно
         /// завершить редактировать.</param>
-        public void FinishSketch(object sketch)
+        public void FinishSketch(ksEntity sketch)
         {
             if (sketch is not ksEntity sketchEntity)
             {
@@ -285,10 +409,10 @@ namespace HammerPluginBuilder
         /// true - прямое, false - обратное.</param>
         /// <param name="symmetric">Флаг симметричного выдавливания в обе
         /// стороны от плоскости эскиза.</param>
-        public void Extrude(object sketch, double height,
+        public void Extrude(ksEntity sketch, double height,
             bool direction = true, bool symmetric = false)
         {
-            if (_part == null)
+            if (_currentPart == null)
             {
                 throw new InvalidOperationException(
                     "Часть не инициализирована. Вызови CreateDocument3D().");
@@ -301,7 +425,7 @@ namespace HammerPluginBuilder
             }
 
             ksEntity extr = 
-                _part.NewEntity((short)Obj3dType.o3d_baseExtrusion)
+                _currentPart.NewEntity((short)Obj3dType.o3d_baseExtrusion)
                           ?? throw new InvalidOperationException(
                           "Не удалось создать сущность o3d_baseExtrusion.");
 
@@ -340,9 +464,9 @@ namespace HammerPluginBuilder
         /// Выполняет операцию вырезания насквозь.
         /// </summary>
         /// <param name="sketch">Эскиз (ksEntity) для вырезания.</param>
-        public void Cut(object sketch)
+        public void Cut(ksEntity sketch)
         {
-            ksEntity op = _part.NewEntity((short)Obj3dType.o3d_cutExtrusion);
+            ksEntity op = _currentPart.NewEntity((short)Obj3dType.o3d_cutExtrusion);
             ksCutExtrusionDefinition def =
                 (ksCutExtrusionDefinition)op.GetDefinition();
             def.SetSketch(sketch);
@@ -364,10 +488,10 @@ namespace HammerPluginBuilder
         /// Направление смещения:
         /// true - положительное, false - отрицательное.</param>
         /// <returns>Объект эскиза на смещенной плоскости.</returns>
-        public object CreateSketchOnOffsetPlane(string plane, double offset,
+        public ksEntity CreateSketchOnOffsetPlane(string plane, double offset,
             bool direction)
         {
-            if (_part == null)
+            if (_currentPart == null)
                 throw new InvalidOperationException(
                     "Часть не инициализирована. Вызови CreateDocument3D().");
 
@@ -382,12 +506,12 @@ namespace HammerPluginBuilder
                     nameof(plane))
             };
 
-            var basePlane = (ksEntity)_part.GetDefaultEntity(planeType)
+            var basePlane = (ksEntity)_currentPart.GetDefaultEntity(planeType)
                            ?? throw new InvalidOperationException(
                                $"Не удалось получить базовую плоскость.");
 
             var offsetPlaneEntity =
-                (ksEntity)_part.NewEntity((short)Obj3dType.o3d_planeOffset)
+                (ksEntity)_currentPart.NewEntity((short)Obj3dType.o3d_planeOffset)
                 ?? throw new InvalidOperationException(
                     "Не удалось создать сущность o3d_planeOffset.");
 
@@ -399,7 +523,7 @@ namespace HammerPluginBuilder
 
             offsetPlaneEntity.Create();
             var sketchEntity =
-                (ksEntity)_part.NewEntity((short)Obj3dType.o3d_sketch)
+                (ksEntity)_currentPart.NewEntity((short)Obj3dType.o3d_sketch)
                 ?? throw new InvalidOperationException(
                     "Не удалось создать сущность o3d_sketch.");
 
@@ -416,9 +540,9 @@ namespace HammerPluginBuilder
         /// Создает элемент по сечениям.
         /// </summary>
         /// <param name="sections">Список сечений.</param>
-        public void Loft(List<object> sections)
+        public void Loft(List<ksEntity> sections)
         {
-            if (_part == null)
+            if (_currentPart == null)
             {
                 throw new InvalidOperationException(
                     "Часть не инициализирована. Вызови CreateDocument3D().");
@@ -449,7 +573,7 @@ namespace HammerPluginBuilder
             }
 
             ksEntity loftEntity = 
-                (ksEntity)_part.NewEntity((short)Obj3dType.o3d_baseLoft)
+                (ksEntity)_currentPart.NewEntity((short)Obj3dType.o3d_baseLoft)
                     ?? throw new InvalidOperationException(
                         "Не удалось создать сущность o3d_baseLoft.");
 
@@ -466,10 +590,9 @@ namespace HammerPluginBuilder
         }
 
         /// <summary>
-        /// Сохранение модели на диск.
+        /// Сохранение детали на диск.
         /// </summary>
-        /// <param name="path">Полный путь к файлу для сохранения.</param>
-        public void SaveAs(string path)
+        public void SavePartAs(string path)
         {
             if (_doc3D == null)
             {
@@ -484,6 +607,36 @@ namespace HammerPluginBuilder
             }
 
             _doc3D.SaveAs(path);
+        }
+
+        /// <summary>
+        /// Сохранение сборки на диск.
+        /// </summary>
+        public void SaveAssemblyAs(string path)
+        {
+            if (_doc3D == null)
+            {
+                throw new InvalidOperationException(
+                    "Документ сборки не создан. Вызови CreateAssemblyDocument().");
+            }
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException(
+                    "Путь к файлу не задан.", nameof(path));
+            }
+
+            _doc3D.SaveAs(path);
+        }
+
+        /// <summary>
+        /// Сбрасывает состояние для создания новой детали.
+        /// </summary>
+        public void ResetForNewPart()
+        {
+            _current2dDoc = null;
+            _currentPart = null;
+            _doc3D = null;
         }
 
         /// <summary>
@@ -524,7 +677,7 @@ namespace HammerPluginBuilder
             finally
             {
                 _current2dDoc = null;
-                _part = null;
+                _currentPart = null;
                 _doc3D = null;
             }
         }
