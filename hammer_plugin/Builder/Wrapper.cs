@@ -58,7 +58,6 @@ namespace HammerPluginBuilder
                 }
             }
 
-            //TODO: RSDN +
             var kompasType = Type.GetTypeFromProgID("KOMPAS.Application.5");
             if (kompasType == null)
             {
@@ -125,10 +124,12 @@ namespace HammerPluginBuilder
         public void InsertPartIntoAssembly(string partFilePath,
             ksEntity attachPlane = null)
         {
+            //TODO: {}
             if (!_isAssemblyMode || _doc3D == null)
                 throw new InvalidOperationException(
                     "Для вставки детали сначала создайте сборку.");
 
+            //TODO: {}
             if (!File.Exists(partFilePath))
                 throw new FileNotFoundException(
                     $"Файл детали не найден: {partFilePath}");
@@ -169,10 +170,12 @@ namespace HammerPluginBuilder
         /// </summary>
         public ksEntity GetHolePlaneForMating()
         {
+            //TODO: {}
             if (!_isAssemblyMode || _doc3D == null)
                 throw new InvalidOperationException(
                     "Сборка не инициализирована.");
 
+            //TODO: {}
             ksPart assemblyPart =
                 (ksPart)_doc3D.GetPart((short)Part_Type.pTop_Part)
                 ?? throw new InvalidOperationException(
@@ -204,6 +207,7 @@ namespace HammerPluginBuilder
         /// </summary>
         public void UpdateAssembly()
         {
+            //TODO: {}
             if (!_isAssemblyMode || _doc3D == null)
                 throw new InvalidOperationException(
                     "Сборка не инициализирована.");
@@ -466,6 +470,7 @@ namespace HammerPluginBuilder
         /// <param name="sketch">Эскиз (ksEntity) для вырезания.</param>
         public void Cut(ksEntity sketch)
         {
+            //TODO: rename
             ksEntity op = _currentPart.NewEntity((short)Obj3dType.o3d_cutExtrusion);
             ksCutExtrusionDefinition def =
                 (ksCutExtrusionDefinition)op.GetDefinition();
@@ -491,6 +496,7 @@ namespace HammerPluginBuilder
         public ksEntity CreateSketchOnOffsetPlane(string plane, double offset,
             bool direction)
         {
+            //TODO: {}
             if (_currentPart == null)
                 throw new InvalidOperationException(
                     "Часть не инициализирована. Вызови CreateDocument3D().");

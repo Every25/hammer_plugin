@@ -45,7 +45,6 @@ namespace HammerPluginCore.Model
         public double Value
         {
             get => _value;
-            //TODO: validation +
             set
             {
                 if (value < _minValue || value > _maxValue)
@@ -65,7 +64,6 @@ namespace HammerPluginCore.Model
         public double MinValue
         {
             get => _minValue;
-            //TODO: validation +
             set
             {
                 if (value > _maxValue)
@@ -94,7 +92,6 @@ namespace HammerPluginCore.Model
         public double MaxValue
         {
             get => _maxValue;
-            //TODO: validation +
             set
             {
                 if (value < _minValue)

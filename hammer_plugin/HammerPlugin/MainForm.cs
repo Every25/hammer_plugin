@@ -45,7 +45,7 @@ namespace HammerPlugin
             {
                 { ParameterType.HeightH, textBoxH },
                 { ParameterType.LengthL, textBoxL },
-                 { ParameterType.MiddleM, textBoxM },
+                { ParameterType.MiddleM, textBoxM },
                 { ParameterType.FaceDiameterD, textBoxD },
                 { ParameterType.FaceWidthC, textBoxC },
                 { ParameterType.NeckWidthA, textBoxA },
@@ -118,6 +118,7 @@ namespace HammerPlugin
                OnDataChanged(ParameterType.ClawLengthL, textBoxNL);
         }
 
+        //TODO: RSDN
         /// <summary>
         /// Обработчик кнопки "Построить".
         /// </summary>

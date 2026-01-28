@@ -8,7 +8,6 @@ using System.Linq;
 
 namespace HammerPluginBuilder
 {
-    //TODO: refactor +
     /// <summary>
     /// Строит 3D-модель молотка в КОМПАС-3D.
     /// </summary>
