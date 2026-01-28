@@ -384,7 +384,7 @@ namespace HammerPluginBuilder
             _wrapper.InsertPartIntoAssembly(handlePartPath, headHolePlane);
 
             _wrapper.UpdateAssembly();
-            _wrapper.SaveAssemblyAs(assemblySavePath);
+            //_wrapper.SaveAssemblyAs(assemblySavePath);
         }
 
         /// <summary>

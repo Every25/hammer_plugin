@@ -302,6 +302,23 @@ namespace HammerPluginTests
         }
 
         [Test]
+        [Description("HasNailPuller должно иметь значение по умолчанию false")]
+        public void HasNailPuller_ShouldHaveDefaultValueFalse()
+        {
+            var parameters = new Parameters();
+            Assert.IsFalse(parameters.HasNailPuller);
+        }
+
+        [Test]
+        [Description("HasNailPuller можно установить в true")]
+        public void HasNailPuller_CanBeSetToTrue()
+        {
+            var parameters = new Parameters();
+            parameters.HasNailPuller = true;
+            Assert.IsTrue(parameters.HasNailPuller);
+        }
+
+        [Test]
         [Description("UpdateCalculatedParameters должен " +
             "правильно вычислять LengthL")]
         public void UpdateCalculatedParameters_ShouldCorrectlyCalculateLengthL()

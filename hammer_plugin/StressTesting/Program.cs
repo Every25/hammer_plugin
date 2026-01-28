@@ -75,11 +75,11 @@ namespace HammerStressTesting
             streamWriter.WriteLine($"Parameters: H={parameters.GetParam(ParameterType.HeightH)}, " +
                                    $"L={parameters.GetParam(ParameterType.LengthL)}, " +
                                    $"D={parameters.GetParam(ParameterType.FaceDiameterD)}");
-            streamWriter.WriteLine("Count\tTime\tRAM (GB)\tTotal RAM (GB)");
+            streamWriter.WriteLine("Count\tTime\tRAM (B)");
             streamWriter.Flush();
 
             Console.WriteLine($"Log file: {fileName}");
-            Console.WriteLine("Count\tTime\t\tRAM (GB)\tTotal RAM (GB)");
+            Console.WriteLine("Count\tTime\t\tRAM (B)\t");
             Console.WriteLine("------------------------------------------------------");
 
             try
@@ -108,20 +108,21 @@ namespace HammerStressTesting
                         }
                     }
 
-                    var usedMemory = currentProcess.PrivateMemorySize64 * gigabyteInByte;
+                    var usedMemory = (computerInfo.TotalPhysicalMemory
+                    - computerInfo.AvailablePhysicalMemory);
                     var totalPhysicalMemory = computerInfo.TotalPhysicalMemory * gigabyteInByte;
                     var elapsedTime = stopWatch.Elapsed;
 
                     // Запись в лог файл
                     streamWriter.WriteLine(
-                        $"{count}\t{elapsedTime:hh\\:mm\\:ss\\.fff}\t{usedMemory:F3}\t{totalPhysicalMemory:F3}");
+                        $"{count}\t{elapsedTime:hh\\:mm\\:ss\\.fff}\t{usedMemory:F3}");
                     streamWriter.Flush();
 
                     // Вывод в консоль каждые 10 итераций
                     if (count % 10 == 0 || count == 1)
                     {
                         var totalElapsed = DateTime.Now - startTime;
-                        Console.Write($"\r{count}\t{elapsedTime:hh\\:mm\\:ss\\.fff}\t{usedMemory:F3} GB\t{totalPhysicalMemory:F3} GB");
+                        Console.Write($"\r{count}\t{elapsedTime:hh\\:mm\\:ss\\.fff}\t{usedMemory:F3} B");
                         Console.Write($" | Total: {totalElapsed:hh\\:mm\\:ss}");
                     }
 
