@@ -320,7 +320,7 @@
             buttonBuild.TabIndex = 4;
             buttonBuild.Text = "Построить";
             buttonBuild.UseVisualStyleBackColor = true;
-            buttonBuild.Click += buildButton_Click;
+            buttonBuild.Click += BuildButton_Click;
             // 
             // label9
             // 

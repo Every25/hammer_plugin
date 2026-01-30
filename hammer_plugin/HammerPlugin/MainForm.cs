@@ -118,13 +118,13 @@ namespace HammerPlugin
                OnDataChanged(ParameterType.ClawLengthL, textBoxNL);
         }
 
-        //TODO: RSDN
+        //TODO: RSDN +
         /// <summary>
         /// Обработчик кнопки "Построить".
         /// </summary>
         /// <param name="sender">Источник события.</param>
         /// <param name="e">Данные события.</param>
-        private void buildButton_Click(object sender, EventArgs e)
+        private void BuildButton_Click(object sender, EventArgs e)
         {
             BuildModel();
         }
@@ -244,7 +244,10 @@ namespace HammerPlugin
         /// </summary>
         private void UpdateCalculatedFields()
         {
-            if (_isUpdatingCalculatedFields) return;
+            if (_isUpdatingCalculatedFields)
+            {
+                return;
+            }
 
             _isUpdatingCalculatedFields = true;
 
