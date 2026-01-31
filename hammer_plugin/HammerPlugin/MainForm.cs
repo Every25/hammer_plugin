@@ -118,7 +118,6 @@ namespace HammerPlugin
                OnDataChanged(ParameterType.ClawLengthL, textBoxNL);
         }
 
-        //TODO: RSDN +
         /// <summary>
         /// Обработчик кнопки "Построить".
         /// </summary>
